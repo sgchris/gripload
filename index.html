@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Upload test</title>
+<meta charset="UTF-8">
+<title>HTML Template</title>
+</head>
+<body>
+
+<form action="" method="post">
+	<input type="file" name="upload" id="upload" />
+</form>
+
+<script src="gripload.js"></script>
+<script>
+
+// initialize file upload object
+gripload(document.getElementById('upload'), {
+	multi: false,
+	target: 'upload.php',
+	onComplete: function(fileData) {
+		alert('done!');
+	},
+	onProgress: function(fileData, percentage) {
+		console.log('completed', percentage);
+	}
+});
+
+</script>
+
+</body>
+</html>
