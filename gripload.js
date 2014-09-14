@@ -22,33 +22,39 @@ var gripload = (function() {
 		}
 	};
 
-	var uploadFiles = function(evt) {
+	var uploadBinaryData = function(binaryData) {
+		// stopped here. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		// split into chuncks and upload one by one
+	}
+
+	// read files as binary data
+	var readAndUploadFiles = function(evt) {
 		var theInput = evt.target;
 		if (!theInput || theInput.tagName !== 'INPUT') {
 			return false;
 		}
-		/*
-		var files = fileInput.files;
+
+		var files = theInput.files;
 		if (!files || !files.length) return; 
 
 		for (var i = 0; file = files[i++];) {
 			var reader  = new FileReader();
 			reader.onloadend = function() {
 				console.log('size', reader.result.length);
-				console.log('reader.result', reader.result);
+				uploadBinaryData(reader.result);
 			};
 			reader.readAsBinaryString(file);
 		}
-		*/
 	};
 
+	// list of inputs type file
 	var fileInputs = (function() {
 		var storedInputs = [];
 
 		return {
 			// add the input to the list and assign 'change' event
 			addAndAssign: function(fInput, options) {
-				fInput.addEventListener('change', uploadFiles);
+				fInput.addEventListener('change', readAndUploadFiles);
 				storedInputs.push({
 					'input': fInput, 
 					'options': options
