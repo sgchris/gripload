@@ -19,10 +19,10 @@ gripload(document.getElementById('upload'), {
 	multi: false,
 	target: 'upload.php',
 	onComplete: function(fileData) {
-		alert('done!');
+		console.log('completed', percentage);
 	},
 	onProgress: function(fileData, percentage) {
-		console.log('completed', percentage);
+		console.log('progress', percentage);
 	}
 });
 

@@ -19,7 +19,9 @@ var gripload = (function() {
 			}
 
 			return obj1;
-		}
+		},
+
+		ajax: function(d,e,a,g,h){var b;if("undefined"!==typeof XMLHttpRequest)b=new XMLHttpRequest;else for(var c=["MSXML2.XmlHttp.5.0","MSXML2.XmlHttp.4.0","MSXML2.XmlHttp.3.0","MSXML2.XmlHttp.2.0","Microsoft.XmlHttp"],f=0,l=c.length;f<l;f++)try{b=new ActiveXObject(c[f]);break}catch(m){}c=[];if(a&&a instanceof Object&&0<Object.keys(a).length)for(var k in a)c.push(k+"="+encodeURIComponent(a[k]));c=c.join("&");d=d.toUpperCase();"POST"==d&&a&&0<Object.keys(a).length&&b.setRequestHeader("Content-type","application/x-www-form-urlencoded");"GET"==d&&a&&0<Object.keys(a).length&&(a=e.indexOf("?"),e+=(0<a?"&":"?")+c);b.open(d,e,!0);b.onreadystatechange=function(){4==b.readyState&&(200<=b.status&&299>=b.status?"function"==typeof g&&g(b.responseText):"function"==typeof h&&h(b.responseText))};b.send(c)}
 	};
 
 	var uploadBinaryData = function(binaryData) {
@@ -34,8 +36,12 @@ var gripload = (function() {
 			return false;
 		}
 
+		// check that files were selected
 		var files = theInput.files;
 		if (!files || !files.length) return; 
+
+		// get the user options of the input
+		var storedInputData = fileInputs.get(theInput);
 
 		for (var i = 0; file = files[i++];) {
 			var reader  = new FileReader();
@@ -59,6 +65,19 @@ var gripload = (function() {
 					'input': fInput, 
 					'options': options
 				});
+			},
+
+			// get the stored input record, by the input element
+			get: function(fileInput) {
+				// find the input in stored inputs
+				var storedInputData = null;
+				for (var i=0, totalRecords = storedInputs.length; i < totalRecords; i++) {
+					if (storedInputs[i].input === fileInput) {
+						return storedInputs[i];
+					}
+				}
+
+				return null;
 			},
 
 			// check if the input is already inside
