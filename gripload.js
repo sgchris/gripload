@@ -44,6 +44,7 @@ var gripload = (function() {
 				chunkContent: chunkContent,
 				uploadToken: uploadToken,
 				size: size,
+				last: (totalChunksToUpload == 1),
 				chunkSize: options.chunkSize
 			}, function(res) {
 				try { 
@@ -123,7 +124,8 @@ var gripload = (function() {
 					storedInputData.onComplete();
 				});
 			};
-			reader.readAsBinaryString(file);
+			//reader.readAsBinaryString(file);
+			reader.readAsDataURL(file);
 		}
 	};
 

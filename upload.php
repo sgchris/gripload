@@ -3,6 +3,27 @@
 $targetFolder = __DIR__.DIRECTORY_SEPARATOR.'uploaded-files';
 $response = array();
 
+
+function _log($str) {
+	file_put_contents('upload.log', "$str\n", FILE_APPEND);
+}
+
+function base64_to_jpeg($base64_string, $output_file) {
+    if (($ifp = fopen($output_file, "wb")) === false) {
+		throw new Exception('Cannot create image file');
+	}
+
+    $data = explode(',', $base64_string);
+
+    if (!@fwrite($ifp, base64_decode($data[1]))) {
+		throw new Exception('Cannot write data to the image file');
+	}
+	
+    fclose($ifp); 
+
+    return true;
+}
+
 try {
 
 	// validate request
@@ -14,6 +35,8 @@ try {
 		!isset($_POST['chunkNumber']) || 
 		!isset($_POST['size']) || 
 		!isset($_POST['chunkSize']) || 
+		!isset($_POST['fileName']) || 
+		!isset($_POST['last']) || 
 		!isset($_POST['uploadToken']))
 		throw new Exception('bad request parameters');
 
@@ -28,7 +51,29 @@ try {
 	}
 
 	// check/create token
-	$token = empty($_POST['uploadToken']) || strcasecmp($_POST['uploadToken'], 'null') == 0 ? uniqid('uploadToken') : $_POST['uploadToken'];
+	$token = empty($_POST['uploadToken']) || strcasecmp($_POST['uploadToken'], 'null') == 0 ? 
+		uniqid('uploadToken') : $_POST['uploadToken'];
+
+	// create file with chunk content
+	$chunkFileName = $targetFolder.DIRECTORY_SEPARATOR.$token.'_'.$_POST['chunkNumber'];
+	_log('creating chunk file '.$chunkFileName.' with content of '.strlen($_POST['chunkContent']).' bytes');
+	file_put_contents($chunkFileName, $_POST['chunkContent']);
+
+
+	if (strcasecmp($_POST['last'], 'true') == 0) {
+		$totalChunks = $_POST['chunkNumber'];
+		$base64String = '';
+		$targetFile = $targetFolder.DIRECTORY_SEPARATOR.$_POST['fileName'];
+		for ($i = 0; $i <= $totalChunks; $i++) {
+			$chunkFileName = $targetFolder.DIRECTORY_SEPARATOR.$token.'_'.$i;
+			$base64String.= file_get_contents($chunkFileName);
+			if (!@unlink($chunkFileName)) {
+				throw new Exception('cannot delete temporary chunk file');
+			}
+		}
+		
+		base64_to_jpeg($base64String, $targetFile);
+	}
 
 	$response['result'] = 'ok';
 	$response['token'] = $token;
