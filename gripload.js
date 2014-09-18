@@ -1,3 +1,6 @@
+/**
+ * check multiple files upload
+ */
 var gripload = (function() {
 
 	var tools = {
