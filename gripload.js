@@ -1,16 +1,5 @@
 var gripload = (function() {
 
-	var defaultOptions = {
-		multi: true,
-		target: 'upload.php',
-		onComplete: function(fileData) {
-			alert('upload completed');
-		},
-		onProgress: function(fileData, percentage) {
-			console.log('completed', percentage);
-		}
-	}
-
 	var tools = {
 		// return merged object. obj2 is injected into obj1
 		mergeObjects: function(obj1, obj2) {
@@ -21,12 +10,95 @@ var gripload = (function() {
 			return obj1;
 		},
 
-		ajax: function(d,e,a,g,h){var b;if("undefined"!==typeof XMLHttpRequest)b=new XMLHttpRequest;else for(var c=["MSXML2.XmlHttp.5.0","MSXML2.XmlHttp.4.0","MSXML2.XmlHttp.3.0","MSXML2.XmlHttp.2.0","Microsoft.XmlHttp"],f=0,l=c.length;f<l;f++)try{b=new ActiveXObject(c[f]);break}catch(m){}c=[];if(a&&a instanceof Object&&0<Object.keys(a).length)for(var k in a)c.push(k+"="+encodeURIComponent(a[k]));c=c.join("&");d=d.toUpperCase();"POST"==d&&a&&0<Object.keys(a).length&&b.setRequestHeader("Content-type","application/x-www-form-urlencoded");"GET"==d&&a&&0<Object.keys(a).length&&(a=e.indexOf("?"),e+=(0<a?"&":"?")+c);b.open(d,e,!0);b.onreadystatechange=function(){4==b.readyState&&(200<=b.status&&299>=b.status?"function"==typeof g&&g(b.responseText):"function"==typeof h&&h(b.responseText))};b.send(c)}
+		// method, url, params, successFn, failureFn
+		ajax: function(d,e,b,h,k){var a;if("undefined"!==typeof XMLHttpRequest)a=new XMLHttpRequest;else for(var c=["MSXML2.XmlHttp.5.0","MSXML2.XmlHttp.4.0","MSXML2.XmlHttp.3.0","MSXML2.XmlHttp.2.0","Microsoft.XmlHttp"],g=0,l=c.length;g<l;g++)try{a=new ActiveXObject(c[g]);break}catch(m){}c=[];if(b&&b instanceof Object&&0<Object.keys(b).length)for(var f in b)c.push(f+"="+encodeURIComponent(b[f]));c=c.join("&");"GET"==d&&b&&0<Object.keys(b).length&&(f=e.indexOf("?"),e+=(0<f?"&":"?")+c);a.open(d,e,!0);d=d.toUpperCase();"POST"==d&&b&&0<Object.keys(b).length&&a.setRequestHeader("Content-type","application/x-www-form-urlencoded");a.onreadystatechange=function(){4==a.readyState&&(200<=a.status&&299>=a.status?"function"==typeof h&&h(a.responseText):"function"==typeof k&&k(a.responseText))};a.send(c)}
 	};
 
-	var uploadBinaryData = function(binaryData) {
-		// stopped here. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-		// split into chuncks and upload one by one
+	var defaultOptions = {
+		multi: true,
+		target: 'upload.php',
+		chunkSize: 10000, // bytes
+		onComplete: function(fileData) {
+			alert('upload completed');
+		},
+		onFailure: function() {
+			alert('upload failed');
+		},
+		onProgress: function(fileData, percentage) {
+			console.log('progress', percentage);
+		}
+	}
+	
+	var uploadBinaryData = function(binaryData, options) {
+		// split into chunks and upload one by one
+		var size = binaryData.length;
+		var totalChunksToUpload = Math.ceil(size / options.chunkSize);
+		var currentChunk = 0;
+		var uploadToken = null;
+
+		// upload one chunk
+		var uploadChunk = function(chunkNumber, chunkContent, callbackFn, failureCallbackFn) {
+			tools.ajax('post', options.target, {
+				fileName: options.fileName,
+				chunkNumber: chunkNumber,
+				chunkContent: chunkContent,
+				uploadToken: uploadToken,
+				size: size,
+				chunkSize: options.chunkSize
+			}, function(res) {
+				try { 
+					res = JSON.parse(res); 
+				} catch (e) { 
+					if (typeof(failureCallbackFn) == 'function') { 
+						failureCallbackFn() 
+						return;
+					}
+				}
+
+				if (res && res.result == 'ok' && res.token) {
+					// upload local upload token
+					uploadToken = res.token;
+
+					if (typeof(callbackFn) == 'function') { 
+						callbackFn(res.token);
+						return;
+					}
+				} else {
+					if (typeof(failureCallbackFn) == 'function') { 
+						failureCallbackFn();
+						return;
+					}
+				}
+
+			}, failureCallbackFn);
+		}
+
+		// upload all the chunks, one by one
+		var uploadChunks = function(callbackFn, failureCallbackFn) {
+			chunkContent = binaryData.substr(currentChunk * options.chunkSize, options.chunkSize);
+			uploadChunk(currentChunk++, chunkContent, function() {
+				if (--totalChunksToUpload == 0) {
+					// upload finished. call the callback
+					if (typeof(callbackFn) == 'function') {
+						callbackFn();
+					}
+				} else {
+					// upload the next chunk
+					uploadChunks(callbackFn, failureCallbackFn);
+				}
+			}, function() {
+				if (typeof(failureCallbackFn) == 'function') {
+					failureCallbackFn();
+				}
+			});
+		};
+
+		// perform he upload
+		uploadChunks(function() {
+			console.log('uploaded successfully!');
+		}, function() {
+			console.log('failed to upload');
+		});
 	}
 
 	// read files as binary data
@@ -44,10 +116,12 @@ var gripload = (function() {
 		var storedInputData = fileInputs.get(theInput);
 
 		for (var i = 0; file = files[i++];) {
+			storedInputData.options.fileName = file.name;
 			var reader  = new FileReader();
 			reader.onloadend = function() {
-				console.log('size', reader.result.length);
-				uploadBinaryData(reader.result);
+				uploadBinaryData(reader.result, storedInputData.options, function() {
+					storedInputData.onComplete();
+				});
 			};
 			reader.readAsBinaryString(file);
 		}
@@ -60,11 +134,11 @@ var gripload = (function() {
 		return {
 			// add the input to the list and assign 'change' event
 			addAndAssign: function(fInput, options) {
-				fInput.addEventListener('change', readAndUploadFiles);
 				storedInputs.push({
 					'input': fInput, 
 					'options': options
 				});
+				fInput.addEventListener('change', readAndUploadFiles);
 			},
 
 			// get the stored input record, by the input element
