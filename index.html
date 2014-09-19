@@ -8,21 +8,21 @@
 <body>
 
 <form action="" method="post">
-	<input type="file" name="upload" id="upload" multiple />
+	<input type="file" name="upload_1" id="upload_1" multiple />
+	<input type="file" name="upload_2" id="upload_2" multiple />
 </form>
 
 <script src="gripload.js"></script>
 <script>
 
 // initialize file upload object
-gripload(document.getElementById('upload'), {
-	multi: false,
+gripload(document.getElementById('upload_1'), {
 	target: 'upload.php',
-	onComplete: function(fileData) {
-		console.log('completed', percentage);
+	onComplete: function(fileNames) {
+		console.log('index.html completed', fileNames);
 	},
 	onProgress: function(fileData, percentage) {
-		console.log('progress', percentage);
+		console.log('index.html progress', percentage);
 	}
 });
 

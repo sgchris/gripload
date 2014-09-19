@@ -18,21 +18,18 @@ var gripload = (function() {
 	};
 
 	var defaultOptions = {
-		multi: true,
 		target: 'upload.php',
-		chunkSize: 10000, // bytes
+		chunkSize: 100000, // bytes
 		onComplete: function(fileData) {
-			alert('upload completed');
 		},
 		onFailure: function() {
-			alert('upload failed');
+			console.warn('upload failed')
 		},
 		onProgress: function(fileData, percentage) {
-			console.log('progress', percentage);
 		}
 	}
 	
-	var uploadBinaryData = function(binaryData, options) {
+	var uploadBinaryData = function(fileName, binaryData, options, callbackFn, failureCallbackFn) {
 		// split into chunks and upload one by one
 		var size = binaryData.length;
 		var totalChunksToUpload = Math.ceil(size / options.chunkSize);
@@ -40,9 +37,9 @@ var gripload = (function() {
 		var uploadToken = null;
 
 		// upload one chunk
-		var uploadChunk = function(chunkNumber, chunkContent, callbackFn, failureCallbackFn) {
+		var uploadChunk = function(chunkNumber, chunkContent, uploadChunkCallbackFn, uploadChunkFailureCallbackFn) {
 			tools.ajax('post', options.target, {
-				fileName: options.fileName,
+				fileName: fileName,
 				chunkNumber: chunkNumber,
 				chunkContent: chunkContent,
 				uploadToken: uploadToken,
@@ -53,8 +50,8 @@ var gripload = (function() {
 				try { 
 					res = JSON.parse(res); 
 				} catch (e) { 
-					if (typeof(failureCallbackFn) == 'function') { 
-						failureCallbackFn() 
+					if (typeof(uploadChunkFailureCallbackFn) == 'function') { 
+						uploadChunkFailureCallbackFn() 
 						return;
 					}
 				}
@@ -63,18 +60,18 @@ var gripload = (function() {
 					// upload local upload token
 					uploadToken = res.token;
 
-					if (typeof(callbackFn) == 'function') { 
-						callbackFn(res.token);
+					if (typeof(uploadChunkCallbackFn) == 'function') { 
+						uploadChunkCallbackFn(res.token);
 						return;
 					}
 				} else {
-					if (typeof(failureCallbackFn) == 'function') { 
-						failureCallbackFn();
+					if (typeof(uploadChunkFailureCallbackFn) == 'function') { 
+						uploadChunkFailureCallbackFn();
 						return;
 					}
 				}
 
-			}, failureCallbackFn);
+			}, uploadChunkFailureCallbackFn);
 		}
 
 		// upload all the chunks, one by one
@@ -98,37 +95,82 @@ var gripload = (function() {
 		};
 
 		// perform he upload
-		uploadChunks(function() {
-			console.log('uploaded successfully!');
-		}, function() {
-			console.log('failed to upload');
-		});
-	}
+		uploadChunks(callbackFn, failureCallbackFn);
+	};
+	
+	/**
+	 * Manage FileReaders with their options (fileName, options)
+	 */
+	var fileReaders = (function() {
+		
+		var readers = [];
+		
+		var self = {
+			add: function(readerObj) {
+				if (!self.exists(readerObj.reader)) {
+					readers.push(readerObj);
+				}
+			},
+			
+			get: function(theFileReader) {
+				var foundReaderObj = null;
+				readers.forEach(function(readerObj) {
+					if (readerObj.reader === theFileReader) {
+						foundReaderObj = readerObj;
+						return false;
+					}
+				});
+				return foundReaderObj;
+			},
+			
+			exists: function(theFileReader) {
+				return (self.get(theFileReader) !== null);
+			}
+		}
+		
+	})();
 
 	// read files as binary data
-	var readAndUploadFiles = function(evt) {
-		var theInput = evt.target;
-		if (!theInput || theInput.tagName !== 'INPUT') {
-			return false;
-		}
-
+	var readAndUploadFiles = function(theInput) {
 		// check that files were selected
 		var files = theInput.files;
 		if (!files || !files.length) return; 
 
 		// get the user options of the input
 		var storedInputData = fileInputs.get(theInput);
-
+		
+		var totalFilesToUpload = files.length;
+		var uploadedFileNames = [];
+		
+		var readers = {};
 		for (var i = 0; file = files[i++];) {
-			storedInputData.options.fileName = file.name;
-			var reader  = new FileReader();
-			reader.onloadend = function() {
-				uploadBinaryData(reader.result, storedInputData.options, function() {
-					storedInputData.onComplete();
+			readers[i] = readers[i] || {};
+			readers[i].fileName = file['name'];
+			readers[i].reader  = new FileReader();
+			readers[i].reader.onloadend = function(event) {
+				var theReader = event.target;
+				var theFileName = null;
+				for (var readerIdx in readers) {
+					if (readers[readerIdx].reader === theReader) {
+						theFileName = readers[readerIdx].fileName; 
+						break;
+					}
+				}
+				if (!theFileName) return;
+				uploadedFileNames.push(theFileName);
+				uploadBinaryData(theFileName, theReader.result, storedInputData.options, function() {
+					// success. if this is the last file, call the callback
+					if (--totalFilesToUpload == 0 && typeof(storedInputData.options.onComplete) == 'function') {
+						storedInputData.options.onComplete(uploadedFileNames);
+					}
+				}, function() {
+					// failure
+					if (typeof(storedInputData.options.onFailure) == 'function') {
+						storedInputData.options.onFailure(storedInputData.options.fileName);
+					}
 				});
 			};
-			//reader.readAsBinaryString(file);
-			reader.readAsDataURL(file);
+			readers[i].reader.readAsDataURL(file);
 		}
 	};
 
@@ -143,7 +185,9 @@ var gripload = (function() {
 					'input': fInput, 
 					'options': options
 				});
-				fInput.addEventListener('change', readAndUploadFiles);
+				fInput.addEventListener('change', function() {
+					readAndUploadFiles(fInput);
+				});
 			},
 
 			// get the stored input record, by the input element
@@ -175,6 +219,11 @@ var gripload = (function() {
 	})();
 
 	var mainFn = function (fileInput, options) {
+		
+		if (!fileInput || !fileInput.tagName == 'INPUT') {
+			console.error('supplied bad file input to `gripload`');
+			return false;
+		}
 
 		// merge with default
 		options = tools.mergeObjects(defaultOptions, options);

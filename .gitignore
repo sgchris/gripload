@@ -1,4 +1,7 @@
+# user uploaded files
 uploaded-files
+
+# log files
 *.log
 
 # eclipse stuff
