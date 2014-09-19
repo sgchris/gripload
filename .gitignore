@@ -1,2 +1,7 @@
 uploaded-files
 *.log
+
+# eclipse stuff
+.buildpath
+.project
+.settings
