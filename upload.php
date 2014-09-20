@@ -52,7 +52,6 @@ try {
 	$chunkFileName = $targetFolder.DIRECTORY_SEPARATOR.$token.'_'.$_POST['chunkNumber'];
 	file_put_contents($chunkFileName, $_POST['chunkContent']);
 
-
 	if (strcasecmp($_POST['last'], 'true') == 0) {
 		$totalChunks = $_POST['chunkNumber'];
 		$base64String = '';

@@ -45,17 +45,25 @@ var gripload = (function() {
 		var currentChunk = 0;
 		var uploadToken = null;
 
-		// upload one chunk
-		var uploadChunk = function(chunkNumber, chunkContent, uploadChunkCallbackFn, uploadChunkFailureCallbackFn) {
-			tools.ajax('post', options.target, {
+		/**
+		 * Upload one chunk
+		 * @param array params - additional params passed to the server
+		 */
+		var uploadChunk = function(chunkNumber, chunkContent, params, uploadChunkCallbackFn, uploadChunkFailureCallbackFn) {
+			
+			// prepare ajax call (send chunk with extra params)
+			var ajaxData = tools.mergeObjects({
 				fileName: fileName,
 				chunkNumber: chunkNumber,
 				chunkContent: chunkContent,
 				uploadToken: uploadToken,
 				size: size,
 				last: (totalChunksToUpload == 1),
-				chunkSize: options.chunkSize
-			}, function(res) {
+				chunkSize: options.chunkSize,
+			}, params);
+			
+			// send the data
+			tools.ajax('post', options.target, ajaxData, function(res) {
 				try { 
 					res = JSON.parse(res); 
 				} catch (e) { 
@@ -83,10 +91,13 @@ var gripload = (function() {
 			}, uploadChunkFailureCallbackFn);
 		}
 
-		// upload all the chunks, one by one
-		var uploadChunks = function(callbackFn, failureCallbackFn) {
+		/**
+		 * upload all the chunks, one by one
+		 * @param array params - additional params passed to the server
+		 */
+		var uploadChunks = function(params, callbackFn, failureCallbackFn) {
 			chunkContent = binaryData.substr(currentChunk * options.chunkSize, options.chunkSize);
-			uploadChunk(currentChunk++, chunkContent, function() {
+			uploadChunk(currentChunk++, chunkContent, params, function() {
 				
 				if (typeof(options.onProgress) == 'function') {
 					var currentPercent = Math.round( ((currentChunk) / totalChunks) * 100 );
@@ -100,7 +111,7 @@ var gripload = (function() {
 					}
 				} else {
 					// upload the next chunk
-					uploadChunks(callbackFn, failureCallbackFn);
+					uploadChunks(params, callbackFn, failureCallbackFn);
 				}
 			}, function() {
 				if (typeof(failureCallbackFn) == 'function') {
@@ -110,7 +121,7 @@ var gripload = (function() {
 		};
 
 		// perform he upload
-		uploadChunks(callbackFn, failureCallbackFn);
+		uploadChunks(options.params, callbackFn, failureCallbackFn);
 	};
 	
 	/**

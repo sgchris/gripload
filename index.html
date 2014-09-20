@@ -9,7 +9,6 @@
 
 <form action="" method="post">
 	<input type="file" name="upload_1" id="upload_1" multiple />
-	<input type="file" name="upload_2" id="upload_2" multiple />
 </form>
 
 <script src="gripload.js"></script>
@@ -19,6 +18,7 @@
 gripload(document.getElementById('upload_1'), {
 	target: 'upload.php',
 	chunkSize: 1 * 768 * 1024,
+	params: {a: 1, b: 2},
 	onBeforeUpload: function(files) {
 		console.time('upload time');
 	},
@@ -27,17 +27,6 @@ gripload(document.getElementById('upload_1'), {
 	},
 	onComplete: function(fileNames) {
 		console.timeEnd('upload time');
-	}
-});
-
-// initialize file upload object
-gripload(document.getElementById('upload_2'), {
-	target: 'upload.php',
-	onComplete: function(fileNames) {
-		console.log('index2.html completed', fileNames);
-	},
-	onProgress: function(fileData, percentage) {
-		console.log('index2.html progress', percentage);
 	}
 });
 
