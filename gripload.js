@@ -6,11 +6,16 @@ var gripload = (function() {
 	var tools = {
 		// return merged object. obj2 is injected into obj1
 		mergeObjects: function(obj1, obj2) {
-			for (var attr in obj2) {
-				obj1[attr] = obj2[attr];
+			var mergedObj = {};
+			for (var attr in obj1) {
+				mergedObj[attr] = obj1[attr];
 			}
 
-			return obj1;
+			for (var attr in obj2) {
+				mergedObj[attr] = obj2[attr];
+			}
+			
+			return mergedObj;
 		},
 
 		// method, url, params, successFn, failureFn
@@ -134,7 +139,7 @@ var gripload = (function() {
 	var readAndUploadFiles = function(theInput) {
 		// check that files were selected
 		var files = theInput.files;
-		if (!files || !files.length) return; 
+		if (!files || !files.length) return;
 
 		// get the user options of the input
 		var storedInputData = fileInputs.get(theInput);
@@ -185,8 +190,8 @@ var gripload = (function() {
 					'input': fInput, 
 					'options': options
 				});
-				fInput.addEventListener('change', function() {
-					readAndUploadFiles(fInput);
+				fInput.addEventListener('change', function(event) {
+					readAndUploadFiles(event.target);
 				});
 			},
 
