@@ -3,11 +3,6 @@
 $targetFolder = __DIR__.DIRECTORY_SEPARATOR.'uploaded-files';
 $response = array();
 
-
-function _log($str) {
-	file_put_contents('upload.log', "$str\n", FILE_APPEND);
-}
-
 function base64_to_jpeg($base64_string, $output_file) {
     if (($ifp = fopen($output_file, "wb")) === false) {
 		throw new Exception('Cannot create image file');
@@ -20,7 +15,6 @@ function base64_to_jpeg($base64_string, $output_file) {
 	}
 	
     fclose($ifp); 
-
     return true;
 }
 
@@ -56,7 +50,6 @@ try {
 
 	// create file with chunk content
 	$chunkFileName = $targetFolder.DIRECTORY_SEPARATOR.$token.'_'.$_POST['chunkNumber'];
-	_log('creating chunk file '.$chunkFileName.' with content of '.strlen($_POST['chunkContent']).' bytes');
 	file_put_contents($chunkFileName, $_POST['chunkContent']);
 
 

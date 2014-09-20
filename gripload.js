@@ -25,6 +25,7 @@ var gripload = (function() {
 	var defaultOptions = {
 		target: 'upload.php',
 		chunkSize: 1 * 768 * 1024, // optimal upload chunk bytes (ubuntu amd64)
+		params: {}, // extra params sent to the server
 		onComplete: function(fileData) {
 		},
 		onFailure: function() {
