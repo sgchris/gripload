@@ -24,20 +24,23 @@ var gripload = (function() {
 
 	var defaultOptions = {
 		target: 'upload.php',
-		chunkSize: 100000, // bytes
+		chunkSize: 1 * 768 * 1024, // optimal upload chunk bytes (ubuntu amd64)
 		onComplete: function(fileData) {
 		},
 		onFailure: function() {
 			console.warn('upload failed')
 		},
 		onProgress: function(fileData, percentage) {
+		},
+		onBeforeUpload: function(files) {
 		}
-	}
+	};
 	
 	var uploadBinaryData = function(fileName, binaryData, options, callbackFn, failureCallbackFn) {
 		// split into chunks and upload one by one
 		var size = binaryData.length;
 		var totalChunksToUpload = Math.ceil(size / options.chunkSize);
+		var totalChunks = totalChunksToUpload;
 		var currentChunk = 0;
 		var uploadToken = null;
 
@@ -83,6 +86,12 @@ var gripload = (function() {
 		var uploadChunks = function(callbackFn, failureCallbackFn) {
 			chunkContent = binaryData.substr(currentChunk * options.chunkSize, options.chunkSize);
 			uploadChunk(currentChunk++, chunkContent, function() {
+				
+				if (typeof(options.onProgress) == 'function') {
+					var currentPercent = Math.round( ((currentChunk) / totalChunks) * 100 );
+					options.onProgress(fileName, currentPercent);
+				}
+				
 				if (--totalChunksToUpload == 0) {
 					// upload finished. call the callback
 					if (typeof(callbackFn) == 'function') {
@@ -191,6 +200,12 @@ var gripload = (function() {
 					'options': options
 				});
 				fInput.addEventListener('change', function(event) {
+					var theInput = event.target; 
+					var inputOptions = fileInputs.get(theInput);
+					if (typeof(inputOptions.options.onBeforeUpload) == 'function') {
+						inputOptions.options.onBeforeUpload(theInput.files);
+					}
+					
 					readAndUploadFiles(event.target);
 				});
 			},

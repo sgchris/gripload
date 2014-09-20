@@ -18,11 +18,15 @@
 // initialize file upload object
 gripload(document.getElementById('upload_1'), {
 	target: 'upload.php',
-	onComplete: function(fileNames) {
-		console.log('index1.html completed', fileNames);
+	chunkSize: 1 * 768 * 1024,
+	onBeforeUpload: function(files) {
+		console.time('upload time');
 	},
-	onProgress: function(fileData, percentage) {
-		console.log('index1.html progress', percentage);
+	onProgress: function(fileName, percentage) {
+		console.log('index1.html', fileName, 'progress', percentage, '%');
+	},
+	onComplete: function(fileNames) {
+		console.timeEnd('upload time');
 	}
 });
 
