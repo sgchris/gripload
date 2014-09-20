@@ -30,7 +30,7 @@ var gripload = (function() {
 		onFailure: function() {
 			console.warn('upload failed')
 		},
-		onProgress: function(fileData, percentage) {
+		onProgress: function(fileName, percentage) {
 		},
 		onBeforeUpload: function(files) {
 		}
