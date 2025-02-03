@@ -1,4 +1,4 @@
-class ChunkedFileUploader {
+class Griploader {
   constructor({ inputId, uploadUrl, chunkSize = 1024 * 1024, onProgress, onComplete, onError }) {
     this.input = document.getElementById(inputId);
     this.uploadUrl = uploadUrl;
@@ -57,7 +57,7 @@ class ChunkedFileUploader {
 }
 
 // Usage
-const uploader = new ChunkedFileUploader({
+const uploader = new Griploader({
   inputId: "fileInput",
   uploadUrl: "/upload.php",
   chunkSize: 1024 * 512, // 512 KB per chunk
