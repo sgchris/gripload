@@ -1,3 +1,5 @@
+const MAX_PARALLEL_UPLOADS = 4; // Number of parallel uploads
+
 class Griploader {
   constructor({ inputId, uploadUrl, chunkSize = 1024 * 1024, onProgress, onComplete, onError }) {
     this.input = document.getElementById(inputId);
@@ -6,18 +8,18 @@ class Griploader {
     this.onProgress = onProgress || (() => {});
     this.onComplete = onComplete || (() => {});
     this.onError = onError || (() => {});
-    
+
     if (!this.input) {
       throw new Error(`Element with ID '${inputId}' not found.`);
     }
-    
+
     this.input.addEventListener("change", this.handleFileSelect.bind(this));
   }
 
   async handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
-    
+
     try {
       await this.uploadFile(file);
       this.onComplete(file);
@@ -28,14 +30,22 @@ class Griploader {
 
   async uploadFile(file) {
     const totalChunks = Math.ceil(file.size / this.chunkSize);
-    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-      const start = chunkIndex * this.chunkSize;
-      const end = Math.min(start + this.chunkSize, file.size);
-      const chunk = file.slice(start, end);
-      
-      await this.uploadChunk(file.name, chunk, chunkIndex, totalChunks);
-      this.onProgress(((chunkIndex + 1) / totalChunks) * 100);
-    }
+    let uploadedChunks = 0;
+
+    const uploadNextChunks = async () => {
+      while (uploadedChunks < totalChunks) {
+        const chunkIndex = uploadedChunks++;
+        const start = chunkIndex * this.chunkSize;
+        const end = Math.min(start + this.chunkSize, file.size);
+        const chunk = file.slice(start, end);
+
+        await this.uploadChunk(file.name, chunk, chunkIndex, totalChunks);
+        this.onProgress(((chunkIndex + 1) / totalChunks) * 100);
+      }
+    };
+
+    const parallelUploads = Array.from({ length: Math.min(MAX_PARALLEL_UPLOADS, totalChunks) }, uploadNextChunks);
+    await Promise.all(parallelUploads);
   }
 
   async uploadChunk(filename, chunk, index, totalChunks) {
@@ -44,12 +54,12 @@ class Griploader {
     formData.append("filename", filename);
     formData.append("chunkIndex", index);
     formData.append("totalChunks", totalChunks);
-    
+
     const response = await fetch(this.uploadUrl, {
       method: "POST",
       body: formData,
     });
-    
+
     if (!response.ok) {
       throw new Error(`Chunk ${index} upload failed: ${response.statusText}`);
     }
