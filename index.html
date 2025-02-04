@@ -1,35 +1,37 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Upload test</title>
-<meta charset="UTF-8">
-<title>HTML Template</title>
+    <meta charset="UTF-8">
+    <title>Upload Test</title>
 </head>
 <body>
 
 <form action="" method="post">
-	<input type="file" name="upload_1" id="upload_1" multiple />
+    <input type="file" id="upload_1" multiple />
 </form>
 
 <script src="gripload.js"></script>
 <script>
+    // Initialize the Griploader instance for handling file uploads
+    const uploader = new Griploader({
+        inputId: "upload_1",
+        uploadUrl: "upload.php",
+        chunkSize: 768 * 1024, // 768 KB per chunk
+        onProgress: function (percentage) {
+            console.log('index1.html', 'Upload progress:', percentage.toFixed(2), '%');
+        },
+        onComplete: function (file) {
+            console.timeEnd('upload time');
+            console.log('Upload complete:', file.name);
+        },
+        onError: function (error) {
+            console.error('Upload error:', error);
+        }
+    });
 
-// initialize file upload object
-gripload(document.getElementById('upload_1'), {
-	target: 'upload.php',
-	chunkSize: 1 * 768 * 1024,
-	params: {a: 1, b: 2},
-	onBeforeUpload: function(files) {
-		console.time('upload time');
-	},
-	onProgress: function(fileName, percentage) {
-		console.log('index1.html', fileName, 'progress', percentage, '%');
-	},
-	onComplete: function(fileNames) {
-		console.timeEnd('upload time');
-	}
-});
-
+    document.getElementById("upload_1").addEventListener("change", function () {
+        console.time("upload time");
+    });
 </script>
 
 </body>
