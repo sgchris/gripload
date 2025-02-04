@@ -8,7 +8,7 @@ class Griploader {
     this.onProgress = onProgress || (() => {});
     this.onComplete = onComplete || (() => {});
     this.onError = onError || (() => {});
-
+    
     if (!this.input) {
       throw new Error(`Element with ID '${inputId}' not found.`);
     }
@@ -20,6 +20,8 @@ class Griploader {
     const file = event.target.files[0];
     if (!file) return;
 
+    this.uploadToken = this.generateToken(); // Generate a token for the file upload
+
     try {
       await this.uploadFile(file);
       this.onComplete(file);
@@ -30,30 +32,48 @@ class Griploader {
 
   async uploadFile(file) {
     const totalChunks = Math.ceil(file.size / this.chunkSize);
-    let uploadedChunks = 0;
+    let chunkIndex = 0;
+    let activeUploads = 0;
+    let completedChunks = 0;
 
-    const uploadNextChunks = async () => {
-      while (uploadedChunks < totalChunks) {
-        const chunkIndex = uploadedChunks++;
-        const start = chunkIndex * this.chunkSize;
-        const end = Math.min(start + this.chunkSize, file.size);
-        const chunk = file.slice(start, end);
+    return new Promise((resolve, reject) => {
+      const uploadNext = () => {
+        while (activeUploads < MAX_PARALLEL_UPLOADS && chunkIndex < totalChunks) {
+          const start = chunkIndex * this.chunkSize;
+          const end = Math.min(start + this.chunkSize, file.size);
+          const chunk = file.slice(start, end);
+          const currentIndex = chunkIndex++;
 
-        await this.uploadChunk(file.name, chunk, chunkIndex, totalChunks);
-        this.onProgress(((chunkIndex + 1) / totalChunks) * 100);
-      }
-    };
+          activeUploads++;
 
-    const parallelUploads = Array.from({ length: Math.min(MAX_PARALLEL_UPLOADS, totalChunks) }, uploadNextChunks);
-    await Promise.all(parallelUploads);
+          this.uploadChunk(file.name, chunk, currentIndex, totalChunks)
+            .then(() => {
+              completedChunks++;
+              this.onProgress((completedChunks / totalChunks) * 100);
+            })
+            .catch(reject)
+            .finally(() => {
+              activeUploads--;
+              if (completedChunks === totalChunks) {
+                resolve();
+              } else {
+                uploadNext(); // Start the next chunk upload
+              }
+            });
+        }
+      };
+
+      uploadNext(); // Start uploading
+    });
   }
 
   async uploadChunk(filename, chunk, index, totalChunks) {
     const formData = new FormData();
-    formData.append("file", chunk);
-    formData.append("filename", filename);
-    formData.append("chunkIndex", index);
+    formData.append("chunk", chunk);
+    formData.append("fileName", filename);
+    formData.append("chunkNumber", index);
     formData.append("totalChunks", totalChunks);
+    formData.append("uploadToken", this.uploadToken); // Send token
 
     const response = await fetch(this.uploadUrl, {
       method: "POST",
@@ -63,6 +83,10 @@ class Griploader {
     if (!response.ok) {
       throw new Error(`Chunk ${index} upload failed: ${response.statusText}`);
     }
+  }
+
+  generateToken() {
+    return Math.random().toString(36).substr(2, 10) + Date.now().toString(36);
   }
 }
 
